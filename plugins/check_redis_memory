@@ -33,7 +33,7 @@ my $host = 'localhost';
 my $port = 6379;
 
 my $np = Nagios::Plugin->new(
-    usage     => "Usage: %s -H <hostname> [-p <port>] [-w <warning>] [-c <critical]\n",
+    usage     => "Usage: %s -H <hostname> [-P <password>] [-p <port>] [-w <warning>] [-c <critical]\n",
     version   => '0.0.1',
     plugin    => $0,
     shortname => 'REDIS',
@@ -45,6 +45,11 @@ $np->add_arg(
     spec     => 'hostname|H=s',
     help     => '-H, --hostname=<hostname>',
     required => 1,
+);
+
+$np->add_arg(
+    spec => 'password|P=s',
+    help => '-P, --password=value'
 );
 
 $np->add_arg(
@@ -71,6 +76,8 @@ my $redis = Redis->new(
     reconnect => 2,   # try to connect for 2 seconds total
     every     => 100, # attempt to connect every 100ms
 );
+
+$redis->auth($np->opts->password) if defined($np->opts->password);
 
 my $info = $redis->info();
 
