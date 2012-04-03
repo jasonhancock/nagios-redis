@@ -1,0 +1,110 @@
+#!/usr/bin/perl
+
+# Copyright (c) 2012 Jason Hancock <jsnbyh@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is furnished
+# to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# This file is part of the nagios-redis bundle that can be found
+# at https://github.com/jasonhancock/nagios-redis
+
+use strict;
+use warnings;
+use Redis;
+use Nagios::Plugin;
+use Nagios::Plugin::Threshold;
+
+my $host = 'localhost';
+my $port = 6379;
+
+my $np = Nagios::Plugin->new(
+    usage     => "Usage: %s -H <hostname> -k <key> [-p <port>] [-w <warning>] [-c <critical]\n",
+    version   => '0.0.1',
+    plugin    => $0,
+    shortname => 'REDIS',
+    blurb     => 'Checks a single key against a redis server',
+    timeout   => 10,
+);
+
+$np->add_arg(
+    spec     => 'hostname|H=s',
+    help     => '-H, --hostname=<hostname>',
+    required => 1,
+);
+
+$np->add_arg(
+    spec     => 'key|k=s',
+    help     => '-k, --key=<key>',
+    required => 1,
+);
+
+$np->add_arg(
+    spec => 'warning|w=s',
+    help => '-w, --warning=value'
+);
+
+$np->add_arg(
+    spec => 'critical|c=s',
+    help => '-c, --critical=value'
+);
+
+
+$np->add_arg(
+    spec     => 'port|p=s',
+    help     => '-p, --port=<port>',
+    default  => 6379,
+);
+
+$np->getopts;
+
+
+my $redis = Redis->new(
+    server    => $np->opts->hostname . ':' . $np->opts->port,
+    reconnect => 2,   # try to connect for 2 seconds total
+    every     => 100, # attempt to connect every 100ms
+);
+
+my $info = $redis->info();
+my $status;
+my $msg = $np->opts->key;
+
+if(defined($info->{$np->opts->key})) {
+
+    my $thresh = undef;
+    if(defined($np->opts->warning) && defined($np->opts->critical)) {
+        $thresh = Nagios::Plugin::Threshold->set_thresholds(
+            warning  => $np->opts->warning,
+            critical => $np->opts->critical,
+        );
+        $status = $np->check_threshold($info->{$np->opts->key});
+    } else {
+        $status = 'OK';
+    }
+
+    $np->add_perfdata(
+        label => $np->opts->key,
+        value => $info->{$np->opts->key},
+        threshold => $thresh 
+    );
+
+} else {
+    $status = 'UNKNOWN';
+    $msg = 'Unknown key';
+}
+
+$np->nagios_exit($status, $msg);
