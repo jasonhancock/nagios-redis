@@ -31,3 +31,10 @@ You need the following perl modules:
 NAGIOS CONFIGURATION:
 ---------------------
 TBD
+
+EXAMPLE GRAPHS:
+---------------
+**check_redis_memory:**
+
+![check_redis_memory](https://github.com/jasonhancock/nagios-redis/raw/master/example-images/check_redis_memory.png)
+
