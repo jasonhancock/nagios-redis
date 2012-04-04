@@ -25,8 +25,8 @@ THE SOFTWARE.
 DEPENDENCIES:
 -------------
 You need the following perl modules:
-    Nagios::Plugin
-    Redis
+*    Nagios::Plugin
+*    Redis
 
 NAGIOS CONFIGURATION:
 ---------------------
