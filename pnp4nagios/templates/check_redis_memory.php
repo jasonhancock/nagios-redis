@@ -41,11 +41,11 @@ $def[1]     = '';
 $ds_name[1] = 'Redis Memory Usage';
 
 $def[1]  = rrd::def   ('var1', $this->DS[0]['RRDFILE'], $this->DS[0]['DS'], 'AVERAGE');
-$def[1] .= rrd::line2 ('var1', $_DATA1, $this->DS[0]['NAME']);
+$def[1] .= rrd::line2 ('var1', $_DATA1, sprintf('%-15s', $this->DS[0]['NAME']));
 $def[1] .= rrd::gprint('var1', array('LAST','MAX','AVERAGE'), '%3.1lf %s');
 
 $def[1] .= rrd::def   ('var2', $this->DS[1]['RRDFILE'], $this->DS[1]['DS'], 'AVERAGE');
-$def[1] .= rrd::line2 ('var2', $_DATA2, $this->DS[1]['NAME']);
+$def[1] .= rrd::line2 ('var2', $_DATA2, sprintf('%-15s', $this->DS[1]['NAME']));
 $def[1] .= rrd::gprint('var2', array('LAST','MAX','AVERAGE'), '%3.1lf %s');
 
 if(isset($warn) && isset($crit)) {
