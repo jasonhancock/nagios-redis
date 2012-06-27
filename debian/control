@@ -1,0 +1,15 @@
+Source: nagios-plugins-redis
+Section: net
+Priority: extra
+Maintainer: Roman Ovchinnikov <coolthecold@gmail.com>
+Build-Depends: debhelper (>= 7.0.50~), perl-base
+Standards-Version: 3.8.4
+Homepage: https://github.com/jasonhancock/nagios-redis
+Vcs-Git: git://github.com/jasonhancock/nagios-redis.git
+Vcs-Browser: https://github.com/jasonhancock/nagios-redis
+
+Package: nagios-plugins-redis
+Architecture: all
+Depends: ${misc:Depends}, libredis-perl, perl-base, libnagios-plugin-perl
+Description: redis plugins for nagios
+ redis checks for nagios
