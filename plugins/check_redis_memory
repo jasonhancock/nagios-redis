@@ -36,7 +36,7 @@ my $np = Nagios::Plugin->new(
     usage     => "Usage: %s -H <hostname> [-P <password>] [-p <port>] [-w <warning>] [-c <critical]\n",
     version   => '0.0.1',
     plugin    => $0,
-    shortname => 'REDIS',
+    shortname => 'Redis Memory',
     blurb     => 'Reports used_memory and used_memory_rss',
     timeout   => 10,
 );
@@ -54,12 +54,12 @@ $np->add_arg(
 
 $np->add_arg(
     spec => 'warning|w=s',
-    help => '-w, --warning=value'
+    help => '-w, --warning=percent'
 );
 
 $np->add_arg(
     spec => 'critical|c=s',
-    help => '-c, --critical=value'
+    help => '-c, --critical=percent'
 );
 
 
@@ -81,18 +81,31 @@ $redis->auth($np->opts->password) if defined($np->opts->password);
 
 my $info = $redis->info();
 
+my $status = 'OK';
 # build the threshold object, if thresholds were set
-my $thresh;
 if(defined($np->opts->warning) && defined($np->opts->critical)) {
-    $thresh = Nagios::Plugin::Threshold->set_thresholds(
-        warning  => $np->opts->warning,
-        critical => $np->opts->critical,
+    # read /proc/meminfo to determine total amount of memory on the system
+    my %mem;
+    open IN, '</proc/meminfo' or die('Can\'t read /proc/meminfo');
+    while(my $line=<IN>) {
+       if($line=~m/^(.+):\s+(\d+)/) {
+            $mem{$1} = $2;
+       }
+    }
+    close IN;
+
+    # use the used_memory_rss because it's actually the amount of memory allocated
+    $status = $np->check_threshold(
+        check    => $info->{'used_memory_rss'},
+        warning  => $np->opts->warning * .01 * $mem{'MemTotal'} * 1024,
+        critical => $np->opts->critical * .01 * $mem{'MemTotal'} * 1024,
     );
 }
 
-# use the used_memory_rss because it's actually the amount of memory allocated
-my $status = $np->check_threshold($info->{'used_memory_rss'});
-my $msg = 'Memory';
+my $msg = sprintf('used/used_rss = %d/%d',
+    $info->{'used_memory'},
+    $info->{'used_memory_rss'}
+);
 
 $np->add_perfdata(
     label => 'used_memory',
@@ -102,7 +115,6 @@ $np->add_perfdata(
 $np->add_perfdata(
     label     => 'used_memory_rss',
     value     => $info->{'used_memory_rss'},
-    threshold => $thresh 
 );
 
 $np->nagios_exit($status, $msg);
