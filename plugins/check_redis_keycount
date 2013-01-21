@@ -1,0 +1,91 @@
+#!/usr/bin/perl
+
+# Copyright (c) 2013 Jason Hancock <jsnbyh@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is furnished
+# to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# This file is part of the nagios-redis bundle that can be found
+# at https://github.com/jasonhancock/nagios-redis
+
+use strict;
+use warnings;
+use Redis;
+use Nagios::Plugin;
+use Nagios::Plugin::Threshold;
+
+my $host = 'localhost';
+my $port = 6379;
+
+my $np = Nagios::Plugin->new(
+    usage     => "Usage: %s -H <hostname> [-P <password>] [-p <port>]\n",
+    version   => '0.0.1',
+    plugin    => $0,
+    shortname => 'Redis Key Count',
+    blurb     => 'Reports number of keys in each Redis DB',
+    timeout   => 10,
+);
+
+$np->add_arg(
+    spec     => 'hostname|H=s',
+    help     => '-H, --hostname=<hostname>',
+    required => 1,
+);
+
+$np->add_arg(
+    spec => 'password|P=s',
+    help => '-P, --password=value'
+);
+
+$np->add_arg(
+    spec     => 'port|p=s',
+    help     => '-p, --port=<port>',
+    default  => 6379,
+);
+
+$np->getopts;
+
+my $redis = Redis->new(
+    server    => $np->opts->hostname . ':' . $np->opts->port,
+    reconnect => 2,   # try to connect for 2 seconds total
+    every     => 100, # attempt to connect every 100ms
+);
+
+$redis->auth($np->opts->password) if defined($np->opts->password);
+
+my $info = $redis->info();
+
+my %dbs;
+
+foreach my $key(keys %{$info}) {
+    if($key=~m/^db(\d+)$/) {
+        my $db = $1;
+        if($info->{"db$db"}=~m/keys=(\d+)/) {
+            $dbs{$db} = $1;
+        }
+    }
+}
+
+foreach my $key(sort { $a <=> $b} keys %dbs) {
+    $np->add_perfdata(
+        label => 'db' . $key,
+        value => $dbs{$key},
+    );
+}
+
+$np->nagios_exit('OK', '');
