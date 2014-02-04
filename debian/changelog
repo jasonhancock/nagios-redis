@@ -1,0 +1,5 @@
+nagios-plugins-redis (0.0.1-1) unstable; urgency=low
+
+  * Initial debianization
+
+ -- Roman Ovchinikov <coolthecold@gmail.com>  Tue, 27 Jun 2012 17:55:06 +0400
